@@ -1,0 +1,382 @@
+/*
+ * Mandatory:
+ *
+ * vars.gitea.image.name
+ * vars.gitea.image.version
+ * vars.gitea.revision
+ * vars.gitea.hosts[]
+ * 
+ * vars.db.image.name
+ * vars.db.image.version
+ * vars.db.revision
+ * vars.db.host
+ * vars.db.port
+ * vars.db.user
+ * vars.db.password
+ * vars.db.database
+ * vars.db.schema
+ * vars.db.admin.user
+ * vars.db.admin.password
+ * 
+ * vars.nginx.image.name
+ * vars.nginx.image.version
+ * vars.nginx.workerProcesses
+ * vars.nginx.workerConnections
+ * vars.nginx.clientMaxBodySize
+ * vars.nginx.readTimeout
+ * 
+ * vars.pgbouncer.image.name
+ * vars.pgbouncer.image.version
+ * 
+ * vars.rsync.image.name
+ * vars.rsync.image.version
+ * vars.rsync.ssh.revision
+ * 
+ * Optional:
+ * 
+ * vars.gitea.limits.cpu
+ * vars.gitea.limits.memory
+ * vars.gitea.requests.cpu
+ * vars.gitea.requests.memory
+ * vars.gitea.affinity.key
+ * vars.gitea.affinity.name
+ * vars.gitea.affinity.required
+ * vars.gitea.allowOnMaster
+ * vars.gitea.tolerations[].effect
+ * vars.gitea.tolerations[].key
+ * vars.gitea.tolerations[].value
+ * vars.gitea.livenessProbe.port
+ * vars.gitea.livenessProbe.initialDelaySeconds
+ * vars.gitea.readinessProbe.port
+ * vars.gitea.readinessProbe.initialDelaySeconds
+ * vars.gitea.httpHeaders[]
+ *     A map of optional HTTP headers.
+ * vars.gitea.httpHeaders[].name
+ * vars.gitea.httpHeaders[].value
+ * 
+ * vars.nginx.limits.cpu
+ * vars.nginx.limits.memory
+ * vars.nginx.requests.cpu
+ * vars.nginx.requests.memory
+ * 
+ * vars.pgbouncer.limits.cpu
+ * vars.pgbouncer.limits.memory
+ * vars.pgbouncer.requests.cpu
+ * vars.pgbouncer.requests.memory
+ * vars.pgbouncer.readinessProbe.initialDelaySeconds
+ *     Defaults to 3.
+ * vars.pgbouncer.livenessProbe.initialDelaySeconds
+ *     Defaults to 30.
+ * 
+ * vars.rsync.limits.cpu
+ * vars.rsync.limits.memory
+ * vars.rsync.requests.cpu
+ * vars.rsync.requests.memory
+ */
+
+import "robobeerun-templates/_affinities.stg"
+import "robobeerun-templates/_cert_config.stg"
+import "robobeerun-templates/_ingress_config.stg"
+import "robobeerun-templates/_nginx_config.stg"
+import "robobeerun-templates/_nginx_probe.stg"
+import "robobeerun-templates/_postgres_probe.stg"
+import "robobeerun-templates/_tolerations.stg"
+import "robobeerun-templates/_resources.stg"
+import "robobeerun-templates/http_probe.stg"
+import "robobeerun-templates/postgresql_init.stg"
+
+/*
+ *
+ */
+cc-redmine-deploy-yaml(parent, vars) ::= <<
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-<vars.db.revision>
+  namespace: gitea-anrisoftware-com
+  labels:
+    tier: backend
+type: Opaque
+data:
+  user: <vars.db.user;format="base64">
+  password: <vars.db.password;format="base64">
+  database: <vars.db.database;format="base64">
+  admin_user: <vars.db.admin.user;format="base64">
+  admin_password: <vars.db.admin.password;format="base64">
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-<vars.gitea.revision>
+  namespace: gitea-anrisoftware-com
+  labels:
+    tier: backend
+data:
+  pgbouncer.ini: |
+    [databases]
+    <vars.db.database> = host=<vars.db.host> port=<vars.db.port> dbname=<vars.db.database>
+    [pgbouncer]
+    listen_port = 5432
+    listen_addr = 0.0.0.0
+    auth_type = md5
+    auth_file = /pgconf/users.txt
+    logfile = /tmp/pgbouncer.log
+    pidfile = /tmp/pgbouncer.pid
+    admin_users = <vars.db.user>
+    ignore_startup_parameters = extra_float_digits
+  users.txt: |
+    "<vars.db.user>" "<vars.db.password>"
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-<vars.gitea.revision>
+  namespace: gitea-anrisoftware-com
+  labels:
+    tier: frontend
+data:
+  nginx.conf: |
+    <nginxDefaults(parent, vars, vars.nginx)>
+    http {
+        <nginxHttpDefaults(parent, vars, vars.nginx)>
+        upstream backend {
+            server 127.0.0.1:3000 max_fails=3 fail_timeout=<vars.nginx.readTimeout>;
+        }
+        <nginxVirtualHosts(parent, vars, vars.gitea.hosts)>
+        server {
+            listen 8080;
+            listen [::]:8080;
+            server_name <first(vars.gitea.hosts)>;
+            root /var/www/html/public;
+            index index.php;
+            <nginxLocationFavicon(parent, vars)>
+            <nginxLocationRobots(parent, vars)>
+            <nginxLocationHidden(parent, vars)>
+            <nginxLocationGitFiles(parent, vars)>
+            <nginxLocationStaticFiles(parent, vars)>
+            <nginxRootProxyPassBackendLocation(parent, vars, vars.nginx)>
+        }
+    }
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitea
+  namespace: gitea-anrisoftware-com
+  labels:
+    tier: frontend
+spec:
+  ports:
+  - name: "http"
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: redmine
+
+---
+
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: gitea
+  namespace: gitea-anrisoftware-com
+  labels:
+    app: redmine
+    tier: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redmine
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: redmine
+        tier: frontend
+    spec:
+      initContainers:
+      <postgresInitDbGroup(vars.db)>
+      containers:
+      - image: <vars.gitea.image.name>:<vars.gitea.image.version>
+        name: gitea
+        env:
+        - name: PUMA_MIN_THREADS
+          value: "<vars.gitea.puma.minThreads>"
+        - name: PUMA_MAX_THREADS
+          value: "<vars.gitea.puma.maxThreads>"
+        - name: PUMA_CLUSTER_WORKERS
+          value: "<vars.gitea.puma.workers>"
+        - name: PUMA_WORKER_TIMEOUT
+          value: "<vars.gitea.puma.timeout>"
+        - name: PUMA_WORKER_BOOT_TIMEOUT
+          value: "<vars.gitea.puma.timeout>"
+        - name: REDMINE_DB_POSTGRES
+          value: "db"
+        - name: REDMINE_DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: db-<vars.db.revision>
+              key: user
+        - name: REDMINE_DB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: db-<vars.db.revision>
+              key: database
+        - name: REDMINE_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-<vars.db.revision>
+              key: password
+        - name: REDMINE_PLUGINS_MIGRATE
+          value: "true"
+        ports:
+        - containerPort: 3000
+          name: "http"
+        <resourcesGroup(parent, vars, vars.redmine)>
+        volumeMounts:
+        - mountPath: "/var/www/html"
+          name: "data"
+          subPath: "redmine_html"
+        - mountPath: "/redmine-in"
+          name: "redmine-config"
+        - mountPath: "/data"
+          name: "data"
+          subPath: "gitea_data"
+        <httpReadinessProbeGroup(vars.redmine)>
+      - image: <vars.nginx.image.name>:<vars.nginx.image.version>
+        name: nginx
+        ports:
+        - containerPort: 8080
+          name: "http"
+        <nginxReadinessProbe(parent, vars, vars.redmine)>
+        <resourcesGroup(parent, vars, vars.nginx)>
+        volumeMounts:
+        - mountPath: "/var/www/html"
+          name: "data"
+          subPath: "redmine_html"
+        - mountPath: "/nginx-in"
+          name: "nginx-config"
+      - image: <vars.pgbouncer.image.name>:<vars.pgbouncer.image.version>
+        name: pgbouncer
+        ports:
+        - containerPort: 5432
+          name: "postgres"
+        env:
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: db-<vars.db.revision>
+              key: user
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-<vars.db.revision>
+              key: password
+        - name: PGDATABASE
+          valueFrom:
+            secretKeyRef:
+              name: db-<vars.db.revision>
+              key: database
+        - name: PGHOST
+          value: "127.0.0.1"
+        <postgresReadinessProbe(parent, vars.pgbouncer)>
+        <resourcesGroup(parent, vars, vars.pgbouncer)>
+        volumeMounts:
+        - mountPath: "/pgconf"
+          name: "pgbouncer-config"
+      restartPolicy: Always
+      volumes:
+      - name: "data"
+        persistentVolumeClaim:
+          claimName: "anrisoftware-com-data-0"
+      - name: "redmine-config"
+        configMap:
+          name: "gitea-<vars.gitea.revision>"
+      - name: "nginx-config"
+        configMap:
+          name: "nginx-<vars.gitea.revision>"
+      - name: "pgbouncer-config"
+        configMap:
+          name: "pgbouncer-<vars.gitea.revision>"
+      <affinitiesGroup(parent, vars, vars.gitea.affinity)>
+      <tolerationMasterGroup(parent, vars, vars.gitea.allowOnMaster)>
+      <tolerationsGroup(parent, vars, vars.gitea.tolerations, vars.gitea.allowOnMaster)>
+
+---
+
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: rsync-redmine
+  namespace: gitea-anrisoftware-com
+  labels:
+    app: rsync-redmine
+    tier: backup
+    group: anrisoftware-com
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: rsync-redmine
+      tier: backup
+      group: anrisoftware-com
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: rsync-redmine
+        tier: backup
+        group: anrisoftware-com
+    spec:
+      containers:
+      - image: <vars.rsync.image.name>:<vars.rsync.image.version>
+        name: rsync-redmine
+        env:
+        - name: RSYNC_AUTHORIZED_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rsync-ssh-<vars.rsync.ssh.revision>
+              key: auth-key
+        - name: USER
+          value: "root"
+        ports:
+        - containerPort: 2222
+          name: ssh
+        readinessProbe:
+          exec:
+            command:
+            - /readiness.sh
+            - /data/Rakefile
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+        <resourcesGroup(parent, vars, vars.rsync)>
+        volumeMounts:
+        - mountPath: "/data"
+          name: data
+          subPath: redmine_html
+        - mountPath: "/bundle"
+          name: data
+          subPath: redmine_bundle
+      restartPolicy: Always
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: anrisoftware-com-data-1
+      <affinitiesGroup(parent, vars, vars.gitea.affinity)>
+      <tolerationMasterGroup(parent, vars, vars.gitea.allowOnMaster)>
+      <tolerationsGroup(parent, vars, vars.gitea.tolerations, vars.gitea.allowOnMaster)>
+
+---
+
+>>

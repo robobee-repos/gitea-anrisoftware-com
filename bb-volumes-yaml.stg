@@ -1,0 +1,24 @@
+/*
+ * Mandatory:
+ *
+ * vars.volume.storage
+ *
+ */
+
+/*
+ * 
+ */
+bb-volumes-yaml(parent, vars) ::= <<
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitea-anrisoftware-com-0
+  namespace: gitea-anrisoftware-com
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: <vars.volume.storage>
+
+>>
