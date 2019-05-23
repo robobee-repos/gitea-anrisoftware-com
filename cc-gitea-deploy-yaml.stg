@@ -299,9 +299,6 @@ spec:
       - name: "data"
         persistentVolumeClaim:
           claimName: "gitea-anrisoftware-com-0"
-      - name: "redmine-config"
-        configMap:
-          name: "gitea-<vars.gitea.revision>"
       - name: "nginx-config"
         configMap:
           name: "nginx-<vars.gitea.revision>"
