@@ -1,12 +1,12 @@
 /*
  * Mandatory:
  *
- * vars.redmine.hosts[]
- * vars.redmine.issuer
+ * vars.gitea.hosts[]
+ * vars.gitea.issuer
  * 
  * Optional:
  * 
- * vars.redmine.port
+ * vars.gitea.port
  *     Defaults to 8080.
  * vars.nginx.clientMaxBodySize
  *     Defaults to "".
@@ -19,34 +19,34 @@ import "robobeerun-templates/_ingress_config.stg"
 /*
  * 
  */
-xx-redmine-ingress-yaml(parent, vars) ::= <<
+xx-gitea-ingress-yaml(parent, vars) ::= <<
 ---
 
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: redmine-ingress
-  namespace: project-anrisoftware-com
+  name: gitea-ingress
+  namespace: gitea-anrisoftware-com
   labels:
     tier: frontend
   annotations:
     <ingressDefaultAnnotations(vars.nginx)>
 spec:
-  <ingressDefaultSpec("redmine-ingress", vars.redmine.hosts)>
+  <ingressDefaultSpec("gitea-ingress", vars.gitea.hosts)>
 
 ---
 
-<ingressService("redmine-ingress", "redmine", "project-anrisoftware-com", vars.redmine)>
+<ingressService("gitea-ingress", "gitea", "gitea-anrisoftware-com", vars.gitea)>
 
 ---
 
 apiVersion: certmanager.k8s.io/v1alpha1
 kind: Certificate
 metadata:
-  name: redmine-ingress
-  namespace: project-anrisoftware-com
+  name: gitea-ingress
+  namespace: gitea-anrisoftware-com
 spec:
-  <certDefaultSpec("redmine-ingress-tls", vars.redmine.hosts, vars.redmine.issuer)>
+  <certDefaultSpec("gitea-ingress-tls", vars.gitea.hosts, vars.gitea.issuer)>
 
 ---
 

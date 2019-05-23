@@ -88,7 +88,7 @@ import "robobeerun-templates/postgresql_init.stg"
 /*
  *
  */
-cc-redmine-deploy-yaml(parent, vars) ::= <<
+cc-gitea-deploy-yaml(parent, vars) ::= <<
 
 ---
 
@@ -180,7 +180,7 @@ spec:
     port: 8080
     targetPort: 8080
   selector:
-    app: redmine
+    app: gitea
 
 ---
 
@@ -190,18 +190,18 @@ metadata:
   name: gitea
   namespace: gitea-anrisoftware-com
   labels:
-    app: redmine
+    app: gitea
     tier: frontend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: redmine
+      app: gitea
       tier: frontend
   template:
     metadata:
       labels:
-        app: redmine
+        app: gitea
         tier: frontend
     spec:
       initContainers:
@@ -298,7 +298,7 @@ spec:
       volumes:
       - name: "data"
         persistentVolumeClaim:
-          claimName: "anrisoftware-com-data-0"
+          claimName: "gitea-anrisoftware-com-0"
       - name: "redmine-config"
         configMap:
           name: "gitea-<vars.gitea.revision>"
