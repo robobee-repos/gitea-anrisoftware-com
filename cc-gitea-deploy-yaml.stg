@@ -229,7 +229,7 @@ data:
     [database]
     DB_TYPE = <vars.db.type>
     HOST    = <vars.db.host>:<vars.db.port>
-    NAME    = <vars.db.db>
+    NAME    = <vars.db.database>
     USER    = <vars.db.user>
     PASSWD  = <vars.db.password>
 
