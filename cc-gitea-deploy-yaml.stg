@@ -416,7 +416,7 @@ spec:
       - name: "gitea-config"
         configMap:
           name: "gitea-config-<vars.gitea.revision>"
-      - name: "gitea-config"
+      - name: "gitea-templates"
         configMap:
           name: "gitea-templates-<vars.gitea.revision>"
       - name: "nginx-config"
