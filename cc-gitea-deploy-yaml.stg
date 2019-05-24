@@ -339,7 +339,7 @@ spec:
           name: "gitea-templates-<vars.gitea.revision>"
       - name: "nginx-config"
         configMap:
-          name: "nginx-<vars.gitea.revision>"
+          name: "nginx-<vars.nginx.revision>"
       - name: "pgbouncer-config"
         configMap:
           name: "pgbouncer-<vars.gitea.revision>"
