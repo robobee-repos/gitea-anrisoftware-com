@@ -168,6 +168,35 @@ data:
 ---
 
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitea-templates-<vars.gitea.revision>
+  namespace: gitea-anrisoftware-com
+  labels:
+    tier: frontend
+data:
+  home.tmpl: |
+    {{template "base/head" .}}
+    <div class="home">
+      <div class="ui stackable middle very relaxed page grid">
+        <div class="sixteen wide center aligned centered column">
+          <div>
+            <img class="logo" src="{{AppSubUrl}}/img/gitea-lg.png" />
+          </div>
+          <div class="hero">
+            <h1 class="ui icon header title">
+              {{AppName}}
+            </h1>
+            <h2>Hosts the Git repositories for <a href="https://project.anrisoftware.com">project.anrisoftware.com</a></h2>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{template "base/footer" .}}
+
+---
+
+apiVersion: v1
 kind: Service
 metadata:
   name: gitea
@@ -210,60 +239,66 @@ spec:
       - image: <vars.gitea.image.name>:<vars.gitea.image.version>
         name: gitea
         env:
-        - name: PUMA_MIN_THREADS
-          value: "<vars.gitea.puma.minThreads>"
-        - name: PUMA_MAX_THREADS
-          value: "<vars.gitea.puma.maxThreads>"
-        - name: PUMA_CLUSTER_WORKERS
-          value: "<vars.gitea.puma.workers>"
-        - name: PUMA_WORKER_TIMEOUT
-          value: "<vars.gitea.puma.timeout>"
-        - name: PUMA_WORKER_BOOT_TIMEOUT
-          value: "<vars.gitea.puma.timeout>"
-        - name: REDMINE_DB_POSTGRES
-          value: "db"
-        - name: REDMINE_DB_USERNAME
+        - name: APP_NAME
+          value: "<vars.gitea.appName>"
+        - name: RUN_MODE
+          value: "<vars.gitea.runMode>"
+        - name: DB_TYPE
+          value: "<vars.db.type>"
+        - name: DB_HOST
+          value: "127.0.0.1:5432"
+        - name: DB_USER
           valueFrom:
             secretKeyRef:
               name: db-<vars.db.revision>
               key: user
-        - name: REDMINE_DB_DATABASE
+        - name: DB_NAME
           valueFrom:
             secretKeyRef:
               name: db-<vars.db.revision>
               key: database
-        - name: REDMINE_DB_PASSWORD
+        - name: DB_PASSWD
           valueFrom:
             secretKeyRef:
               name: db-<vars.db.revision>
               key: password
-        - name: REDMINE_PLUGINS_MIGRATE
-          value: "true"
-        ports:
+        - name: GOOGLE_ANALYTICS_JAVASCRIPT
+          value: |
+            \<!-- Google Analytics -->
+            \<script>
+            window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+            ga('create', '\<var.gitea.googleAnalyticsTag>', 'auto');
+            ga('send', 'pageview');
+            \</script>
+            \<script async src='https://www.google-analytics.com/analytics.js'>\</script>
+            \<!-- End Google Analytics -->
+      ports:
         - containerPort: 3000
           name: "http"
-        <resourcesGroup(parent, vars, vars.redmine)>
+        - containerPort: 22
+          name: "ssh"
+        <resourcesGroup(parent, vars, vars.gitea)>
         volumeMounts:
         - mountPath: "/var/www/html"
           name: "data"
-          subPath: "redmine_html"
-        - mountPath: "/redmine-in"
-          name: "redmine-config"
+          subPath: "gitea_html"
         - mountPath: "/data"
           name: "data"
           subPath: "gitea_data"
-        <httpReadinessProbeGroup(vars.redmine)>
+        - mountPath: "/custom-in"
+          name: "gitea-templates"
+        <httpReadinessProbeGroup(vars.gitea)>
       - image: <vars.nginx.image.name>:<vars.nginx.image.version>
         name: nginx
         ports:
         - containerPort: 8080
           name: "http"
-        <nginxReadinessProbe(parent, vars, vars.redmine)>
+        <nginxReadinessProbe(parent, vars, vars.gitea)>
         <resourcesGroup(parent, vars, vars.nginx)>
         volumeMounts:
         - mountPath: "/var/www/html"
           name: "data"
-          subPath: "redmine_html"
+          subPath: "gitea_html"
         - mountPath: "/nginx-in"
           name: "nginx-config"
       - image: <vars.pgbouncer.image.name>:<vars.pgbouncer.image.version>
@@ -299,6 +334,9 @@ spec:
       - name: "data"
         persistentVolumeClaim:
           claimName: "gitea-anrisoftware-com-0"
+      - name: "gitea-templates"
+        configMap:
+          name: "gitea-templates-<vars.gitea.revision>"
       - name: "nginx-config"
         configMap:
           name: "nginx-<vars.gitea.revision>"
