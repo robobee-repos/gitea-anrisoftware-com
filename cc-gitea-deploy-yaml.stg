@@ -197,6 +197,83 @@ data:
 ---
 
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitea-config-<vars.gitea.revision>
+  namespace: gitea-anrisoftware-com
+  labels:
+    tier: frontend
+data:
+  app.ini: |
+    APP_NAME = Anrisoftware Projects
+    RUN_MODE = prod
+
+    [repository]
+    ROOT = /data/git/repositories
+
+    [repository.local]
+    LOCAL_COPY_PATH = /data/gitea/tmp/local-repo
+
+    [repository.upload]
+    TEMP_PATH = /data/gitea/uploads
+
+    [server]
+    APP_DATA_PATH    = /data/gitea
+    SSH_DOMAIN       = anrisoftware.com
+    HTTP_PORT        = 3000
+    ROOT_URL         = <first(vars.gitea.hosts)>
+    DISABLE_SSH      = false
+    SSH_PORT         = 22
+    LFS_CONTENT_PATH = /data/git/lfs
+
+    [database]
+    DB_TYPE = <vars.db.type>
+    HOST    = <vars.db.host>:<vars.db.port>
+    NAME    = <vars.db.db>
+    USER    = <vars.db.user>
+    PASSWD  = <vars.db.password>
+
+    [indexer]
+    ISSUE_INDEXER_PATH = /data/gitea/indexers/issues.bleve
+
+    [session]
+    PROVIDER_CONFIG = /data/gitea/sessions
+
+    [picture]
+    AVATAR_UPLOAD_PATH = /data/gitea/avatars
+
+    [attachment]
+    PATH = /data/gitea/attachments
+
+    [log]
+    ROOT_PATH = /data/gitea/log
+
+    [security]
+    INSTALL_LOCK   = true
+    SECRET_KEY     = <vars.gitea.secretKey>
+    INTERNAL_TOKEN = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYmYiOjE1NTg2ODA4OTB9.ISTgMOzCdj-r1K78ppos8y-xCsBHSoUSO6iPRKZhnYI
+
+    [service]
+    DISABLE_REGISTRATION = false
+    REQUIRE_SIGNIN_VIEW  = false
+
+    [oauth2]
+    JWT_SECRET = aIOjjA4bheUqAdiQAnSR5mKv7BIE3IjE5KHFg8hFd-Q
+
+    [mailer]
+    ENABLED = true
+    HOST    = <vars.gitea.email.host>
+    FROM    = <vars.gitea.email.from>
+    USER    = <vars.gitea.email.user>
+    PASSWD  = <vars.gitea.email.password>
+
+    [openid]
+    ENABLE_OPENID_SIGNIN = true
+    ENABLE_OPENID_SIGNUP = false
+
+---
+
+apiVersion: v1
 kind: Service
 metadata:
   name: gitea
@@ -285,6 +362,8 @@ spec:
         - mountPath: "/data"
           name: "data"
           subPath: "gitea_data"
+        - mountPath: "/custom-in/conf"
+          name: "gitea-config"
         - mountPath: "/custom-in/templates"
           name: "gitea-templates"
         <httpReadinessProbeGroup(vars.gitea)>
@@ -334,7 +413,10 @@ spec:
       - name: "data"
         persistentVolumeClaim:
           claimName: "gitea-anrisoftware-com-0"
-      - name: "gitea-templates"
+      - name: "gitea-config"
+        configMap:
+          name: "gitea-config-<vars.gitea.revision>"
+      - name: "gitea-config"
         configMap:
           name: "gitea-templates-<vars.gitea.revision>"
       - name: "nginx-config"
