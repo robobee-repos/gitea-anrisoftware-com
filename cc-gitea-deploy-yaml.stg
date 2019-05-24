@@ -137,7 +137,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: nginx-<vars.gitea.revision>
+  name: nginx-<vars.nginx.revision>
   namespace: gitea-anrisoftware-com
   labels:
     tier: frontend
