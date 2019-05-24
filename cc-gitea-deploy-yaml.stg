@@ -225,6 +225,7 @@ data:
     DISABLE_SSH      = false
     SSH_PORT         = 22
     LFS_CONTENT_PATH = /data/git/lfs
+    STATIC_ROOT_PATH = ./
 
     [database]
     DB_TYPE = <vars.db.type>
