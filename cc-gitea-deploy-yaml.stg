@@ -274,7 +274,7 @@ data:
 
     [metrics]
     ENABLED = true
- 
+
 ---
 
 apiVersion: v1
