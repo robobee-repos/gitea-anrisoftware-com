@@ -112,7 +112,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pgbouncer-<vars.gitea.revision>
+  name: pgbouncer-<vars.db.revision>
   namespace: gitea-anrisoftware-com
   labels:
     tier: backend
@@ -342,7 +342,7 @@ spec:
           name: "nginx-<vars.nginx.revision>"
       - name: "pgbouncer-config"
         configMap:
-          name: "pgbouncer-<vars.gitea.revision>"
+          name: "pgbouncer-<vars.db.revision>"
       <affinitiesGroup(parent, vars, vars.gitea.affinity)>
       <tolerationMasterGroup(parent, vars, vars.gitea.allowOnMaster)>
       <tolerationsGroup(parent, vars, vars.gitea.tolerations, vars.gitea.allowOnMaster)>
