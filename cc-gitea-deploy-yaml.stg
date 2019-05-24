@@ -175,7 +175,7 @@ metadata:
   labels:
     tier: frontend
 data:
-  home.tmpl: |
+  templates/home.tmpl: |
     {{template "base/head" .}}
     \<div class="home">
       \<div class="ui stackable middle very relaxed page grid">
