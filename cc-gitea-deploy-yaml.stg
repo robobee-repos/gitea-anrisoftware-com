@@ -154,7 +154,7 @@ data:
             listen 8080;
             listen [::]:8080;
             server_name <first(vars.gitea.hosts)>;
-            root /var/www/html/public;
+            root /var/www/html;
             index index.php;
             <nginxLocationFavicon(parent, vars)>
             <nginxLocationRobots(parent, vars)>
