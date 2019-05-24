@@ -221,7 +221,7 @@ data:
     APP_DATA_PATH    = /data/gitea
     SSH_DOMAIN       = anrisoftware.com
     HTTP_PORT        = 3000
-    ROOT_URL         = <first(vars.gitea.hosts)>
+    ROOT_URL         = https://<first(vars.gitea.hosts)>
     DISABLE_SSH      = false
     SSH_PORT         = 22
     LFS_CONTENT_PATH = /data/git/lfs
@@ -229,7 +229,7 @@ data:
 
     [database]
     DB_TYPE = <vars.db.type>
-    HOST    = <vars.db.host>:<vars.db.port>
+    HOST    = localhost:5432
     NAME    = <vars.db.database>
     USER    = <vars.db.user>
     PASSWD  = <vars.db.password>
