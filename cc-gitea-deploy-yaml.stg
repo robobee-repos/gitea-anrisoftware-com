@@ -175,7 +175,7 @@ metadata:
   labels:
     tier: frontend
 data:
-  templates/home.tmpl: |
+  home.tmpl: |
     {{template "base/head" .}}
     \<div class="home">
       \<div class="ui stackable middle very relaxed page grid">
@@ -287,6 +287,7 @@ spec:
           subPath: "gitea_data"
         - mountPath: "/custom-in"
           name: "gitea-templates"
+          subPath: "templates"
         <httpReadinessProbeGroup(vars.gitea)>
       - image: <vars.nginx.image.name>:<vars.nginx.image.version>
         name: nginx
