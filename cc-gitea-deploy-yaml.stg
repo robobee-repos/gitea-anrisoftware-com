@@ -285,9 +285,8 @@ spec:
         - mountPath: "/data"
           name: "data"
           subPath: "gitea_data"
-        - mountPath: "/custom-in"
+        - mountPath: "/custom-in/templates"
           name: "gitea-templates"
-          subPath: "templates"
         <httpReadinessProbeGroup(vars.gitea)>
       - image: <vars.nginx.image.name>:<vars.nginx.image.version>
         name: nginx
